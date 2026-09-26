@@ -89,11 +89,12 @@ function applyColumnWidths() {
   state.visibleColumns.forEach((key, index) => { if (cols[index]) cols[index].style.width = `${columnWidth(key)}px`; });
 }
 function renderHeader() {
-  const head = $('table-head'); head.innerHTML = '';
-  table.querySelectorAll('colgroup').forEach(group => group.remove());
+  const scrollTop = tableScroll.scrollTop;
+  const head = $('table-head');
   const group = document.createElement('colgroup');
   state.visibleColumns.forEach(key => { const col = document.createElement('col'); col.dataset.key = key; col.style.width = `${columnWidth(key)}px`; group.append(col); });
-  table.insertBefore(group, head);
+  const oldGroup = table.querySelector('colgroup');
+  if (oldGroup) oldGroup.replaceWith(group); else table.insertBefore(group, head);
   const row = document.createElement('tr');
   for (const key of state.visibleColumns) {
     const th = document.createElement('th'); th.dataset.key = key; th.style.width = `${columnWidth(key)}px`;
@@ -103,7 +104,8 @@ function renderHeader() {
     const resize = document.createElement('span'); resize.className = 'resize'; resize.dataset.resize = key; resize.title = '列幅を変更';
     th.append(filter, resize); row.append(th);
   }
-  head.append(row); applyColumnWidths();
+  head.replaceChildren(row); applyColumnWidths();
+  if (tableScroll.scrollTop !== scrollTop) tableScroll.scrollTop = scrollTop;
 }
 function displayValue(row, key) {
   if (isPlaylist(key)) { const count = membershipCount(state.data.membership, playlistId(key), row.id); return count ? (count > 1 ? `✓ ${count}` : '✓') : ''; }
@@ -113,19 +115,25 @@ function displayValue(row, key) {
   return value ?? '';
 }
 function renderBody() {
-  const body = $('table-body'); body.innerHTML = '';
+  const scrollTop = tableScroll.scrollTop;
   const viewport = Math.max(0, tableScroll.clientHeight - HEADER_HEIGHT);
-  const start = Math.max(0, Math.floor(tableScroll.scrollTop / ROW_HEIGHT) - 4);
+  const body = $('table-body');
+  const start = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 4);
   const count = Math.ceil(viewport / ROW_HEIGHT) + 8;
   const end = Math.min(state.visibleRows.length, start + count);
-  const top = document.createElement('tr'); top.className = 'virtual-spacer'; top.style.height = `${start * ROW_HEIGHT}px`; top.innerHTML = `<td colspan="${state.visibleColumns.length}"></td>`; body.append(top);
+  const rows = document.createDocumentFragment();
+  const top = document.createElement('tr'); top.className = 'virtual-spacer'; top.style.height = `${start * ROW_HEIGHT}px`;
+  const topCell = document.createElement('td'); topCell.colSpan = state.visibleColumns.length; top.append(topCell); rows.append(top);
   for (let index = start; index < end; index++) {
     const row = state.visibleRows[index], tr = document.createElement('tr'); tr.className = 'data-row'; tr.dataset.id = row.id;
     if (state.selection.has(row.id)) tr.classList.add('selected');
     state.visibleColumns.forEach(key => { const td = document.createElement('td'); if (isPlaylist(key)) td.className = 'membership'; td.textContent = displayValue(row, key); tr.append(td); });
-    body.append(tr);
+    rows.append(tr);
   }
-  const bottom = document.createElement('tr'); bottom.className = 'virtual-spacer'; bottom.style.height = `${Math.max(0, (state.visibleRows.length - end) * ROW_HEIGHT)}px`; bottom.innerHTML = `<td colspan="${state.visibleColumns.length}"></td>`; body.append(bottom);
+  const bottom = document.createElement('tr'); bottom.className = 'virtual-spacer'; bottom.style.height = `${Math.max(0, (state.visibleRows.length - end) * ROW_HEIGHT)}px`;
+  const bottomCell = document.createElement('td'); bottomCell.colSpan = state.visibleColumns.length; bottom.append(bottomCell); rows.append(bottom);
+  body.replaceChildren(rows);
+  if (tableScroll.scrollTop !== scrollTop) tableScroll.scrollTop = scrollTop;
 }
 function selectedHidden() { const visible = new Set(state.visibleRows.map(row => String(row.id))); return [...state.selection.selected].filter(id => !visible.has(id)).length; }
 function updateCount() {
