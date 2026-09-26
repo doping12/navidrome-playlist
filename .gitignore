@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+config.toml
+CLAUDE.md
+AGENTS.md
+.claude/
+.codex/
+dev-plan/
+*.egg-info/

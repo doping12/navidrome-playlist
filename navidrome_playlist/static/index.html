@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Navidrome Playlist</title><link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <header class="topbar"><h1>Navidrome Playlist</h1><button id="reload">Navidromeから再読み込み</button><span id="status" role="status"></span></header>
+  <main>
+    <section class="toolbar" aria-label="選択操作">
+      <span id="selection-count">0件選択中</span><button id="select-all">表示中を全選択</button><button id="clear-selection">選択解除</button><button id="invert-selection">表示中を反転</button>
+      <span class="toolbar-sep"></span><label>対象 <select id="playlist-target" aria-label="対象プレイリスト"></select></label><button id="add-existing">追加</button><button id="remove-from">削除</button><button id="create-playlist">新規プレイリストに追加</button><button id="columns">表示列</button>
+    </section>
+    <section id="filter-summary" class="filter-summary" aria-label="適用中のフィルター"></section>
+    <div id="song-count" class="song-count">表示 0 / 全 0 曲</div>
+    <section id="column-menu" class="popover hidden"></section>
+    <section id="edit-menu" class="popover hidden"></section>
+    <div id="table-wrap" class="table-wrap" tabindex="0"><div id="table-scroll" class="table-scroll"><table><thead id="table-head"></thead><tbody id="table-body"></tbody></table><div id="spacer"></div></div></div>
+  </main>
+  <dialog id="name-dialog"><form id="name-form" method="dialog"><label>プレイリスト名 <input id="playlist-name" required maxlength="200"></label><div><button id="name-cancel" type="button" formnovalidate>キャンセル</button><button id="name-submit" value="ok">作成</button></div></form></dialog>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

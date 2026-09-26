@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "navidrome-playlist"
+version = "0.1.0"
+description = "A fast, local web UI for bulk editing Navidrome playlists"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+navidrome-playlist = "navidrome_playlist.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["navidrome_playlist*"]
+
+[tool.setuptools.package-data]
+navidrome_playlist = ["static/*"]
+
+[dependency-groups]
+dev = ["pytest>=8"]

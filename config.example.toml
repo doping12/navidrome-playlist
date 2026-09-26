@@ -1,0 +1,8 @@
+[navidrome]
+url = "http://localhost:4533"
+username = "your-username"
+password = "your-password"
+
+[server]
+host = "127.0.0.1"
+port = 4534
