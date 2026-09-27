@@ -376,13 +376,15 @@ function onDocumentMouseMove(event) {
 function endDrag() { if (!state.dragging) return; cancelAnimationFrame(state.dragRaf); state.dragging = null; }
 
 document.addEventListener('click', event => {
-  const sortHeader = event.target.closest('th[data-key]');
-  const filter = event.target.closest('[data-filter]');
-  const resize = event.target.closest('.resize');
+  const path = event.composedPath();
+  const match = selector => path.find(node => node?.nodeType === 1 && node.matches(selector));
+  const sortHeader = match('th[data-key]');
+  const filter = match('[data-filter]');
+  const resize = match('.resize');
   if (sortHeader && !filter && !resize && !state.suppressSortClick) sortClick(sortHeader.dataset.key);
   if (filter) showFilter(filter.dataset.filter, filter);
-  const remove = event.target.closest('[data-filter-remove]'); if (remove) { delete state.filters[remove.dataset.filterRemove]; renderHeader(); recompute(); }
-  if (!event.target.closest('.popover,#columns,[data-filter],#filter-summary')) document.querySelectorAll('.popover').forEach(popover => popover.classList.add('hidden'));
+  const remove = match('[data-filter-remove]'); if (remove) { delete state.filters[remove.dataset.filterRemove]; renderHeader(); recompute(); }
+  if (!path.some(node => node?.nodeType === 1 && node.matches('.popover,#columns,[data-filter],#filter-summary'))) document.querySelectorAll('.popover').forEach(popover => popover.classList.add('hidden'));
 });
 tableScroll.addEventListener('mousedown', onTableMouseDown); tableScroll.addEventListener('mousedown', onHeaderMouseDown); document.addEventListener('mousemove', onDocumentMouseMove); document.addEventListener('mouseup', endDrag); document.addEventListener('mouseup', endReorder);
 tableScroll.addEventListener('scroll', () => { cancelAnimationFrame(state.scrollRaf); state.scrollRaf = requestAnimationFrame(() => { renderBody(); updateCount(); }); });
