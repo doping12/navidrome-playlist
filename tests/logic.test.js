@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { beginGesture, conditionMatches, filterRows, sortRows, SelectionModel, dragPaint, filterChipData } from '../navidrome_playlist/static/logic.js';
+import { beginGesture, conditionMatches, filterRows, moveColumn, sortRows, SelectionModel, dragPaint, filterChipData } from '../navidrome_playlist/static/logic.js';
 
 const fields = { title: { type: 'text' }, year: { type: 'number' }, date: { type: 'date' }, 'playlist:p': { type: 'number', playlist: true } };
 const rows = [{ id: '1', title: 'Alpha 2', year: 10, date: '2015' }, { id: '2', title: 'beta', year: 2, date: '2015-07-23' }, { id: '3', title: '', year: 20, date: '' }];
@@ -29,6 +29,36 @@ test('sort uses numeric values and empty values last', () => {
   assert.deepEqual(sortRows(rows, { key: 'year', direction: 'asc' }, fields).map(r => r.id), ['2', '1', '3']);
   assert.deepEqual(sortRows(rows, { key: 'title', direction: 'asc' }, fields).map(r => r.id), ['1', '2', '3']);
   assert.deepEqual(sortRows(rows, { key: 'date', direction: 'asc' }, fields).map(r => r.id), ['1', '2', '3']);
+});
+
+test('multi-column sort follows key order, direction, membership and stability', () => {
+  const multiFields = {
+    date: { type: 'date' }, album: { type: 'text' }, track: { type: 'number' },
+    score: { type: 'number' }, 'playlist:p': { type: 'number', playlist: true },
+  };
+  const multiRows = [
+    { id: 'a', date: '2024-01-01', album: 'B', track: 2, score: 1 },
+    { id: 'b', date: '2024-01-01', album: 'A', track: 2, score: 2 },
+    { id: 'c', date: '2024-01-01', album: 'A', track: 1, score: 3 },
+    { id: 'd', date: '2023-12-01', album: 'Z', track: 1, score: 4 },
+    { id: 'e', date: '2024-01-01', album: 'A', track: 1, score: 3 },
+    { id: 'f', date: '', album: 'A', track: 1, score: 0 },
+  ];
+  assert.deepEqual(sortRows(multiRows, [
+    { key: 'date', direction: 'asc' }, { key: 'album', direction: 'asc' }, { key: 'track', direction: 'asc' },
+  ], multiFields).map(row => row.id), ['d', 'c', 'e', 'b', 'a', 'f']);
+  assert.deepEqual(sortRows(multiRows, [{ key: 'score', direction: 'desc' }], multiFields).map(row => row.id), ['d', 'c', 'e', 'b', 'a', 'f']);
+  assert.deepEqual(sortRows(multiRows, [{ key: 'playlist:p', direction: 'desc' }], multiFields, { 'playlist:p': { a: 1, b: 2, c: 1 } }).map(row => row.id), ['b', 'a', 'c', 'd', 'e', 'f']);
+  assert.deepEqual(sortRows([
+    { id: '1', value: 'same' }, { id: '2', value: 'same' }, { id: '3', value: 'same' },
+  ], [{ key: 'value', direction: 'asc' }], { value: { type: 'text' } }).map(row => row.id), ['1', '2', '3']);
+});
+
+test('moveColumn inserts at the post-removal index without mutating the source', () => {
+  const columns = ['date', 'album', 'track', 'artist'];
+  assert.deepEqual(moveColumn(columns, 'track', 0), ['track', 'date', 'album', 'artist']);
+  assert.deepEqual(moveColumn(columns, 'date', 3), ['album', 'track', 'artist', 'date']);
+  assert.deepEqual(columns, ['date', 'album', 'track', 'artist']);
 });
 
 test('selection toggle, additive range and invert', () => {

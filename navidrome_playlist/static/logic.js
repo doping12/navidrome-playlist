@@ -12,15 +12,59 @@ export function compareValues(a, b, type, collator = DEFAULT_COLLATOR) {
   return collator.compare(String(a), String(b));
 }
 
-export function sortRows(rows, sort, fieldsByKey = {}) {
-  if (!sort?.key || !sort.direction) return [...rows];
-  const direction = sort.direction === 'desc' ? -1 : 1;
-  const type = fieldsByKey[sort.key]?.type || (sort.playlist ? 'number' : 'text');
-  const collator = new Intl.Collator('ja', { numeric: true, sensitivity: 'base' });
-  return rows.map((row, index) => ({ row, index })).sort((a, b) => {
-    const left = sort.playlist ? (sort.membership?.[String(a.row.id)] || 0) : a.row[sort.key];
-    const right = sort.playlist ? (sort.membership?.[String(b.row.id)] || 0) : b.row[sort.key];
-    return compareValues(left, right, sort.playlist ? 'number' : type, collator) * direction || a.index - b.index;
+function normalizedSortKeys(sort) {
+  if (Array.isArray(sort)) return sort.filter(item => item?.key && (item.direction === 'asc' || item.direction === 'desc'));
+  if (sort?.key && (sort.direction === 'asc' || sort.direction === 'desc')) return [{ ...sort }];
+  return Object.entries(sort || {})
+    .filter(([, direction]) => direction === 'asc' || direction === 'desc')
+    .map(([key, direction]) => ({ key, direction }));
+}
+
+function membershipValues(memberships, key, sortKey) {
+  if (sortKey.membership) return sortKey.membership;
+  return memberships?.[key] || memberships?.[key.slice('playlist:'.length)] || {};
+}
+
+function isEmpty(value) { return value === null || value === undefined || value === ''; }
+
+export function sortRows(rows, sort, fieldsByKey = {}, memberships = {}) {
+  const sortKeys = normalizedSortKeys(sort);
+  if (!sortKeys.length) return [...rows];
+  const collator = DEFAULT_COLLATOR;
+  const preparedKeys = sortKeys.map(sortKey => {
+    const field = fieldsByKey[sortKey.key] || {};
+    const playlist = Boolean(sortKey.playlist || field.playlist || sortKey.key.startsWith('playlist:'));
+    const values = playlist ? membershipValues(memberships, sortKey.key, sortKey) : null;
+    const valueFor = row => playlist ? (values?.[String(row.id)] || 0) : row[sortKey.key];
+    const prepareValue = value => {
+      if (isEmpty(value)) return value;
+      if (field.type === 'number' || playlist) return Number(value);
+      return String(value);
+    };
+    return {
+      direction: sortKey.direction === 'desc' ? -1 : 1,
+      type: playlist ? 'number' : field.type || 'text',
+      values: row => prepareValue(valueFor(row)),
+    };
+  });
+
+  // Decorate once so the comparator does not repeatedly read or convert row values.
+  return rows.map((row, index) => ({
+    row,
+    index,
+    values: preparedKeys.map(sortKey => sortKey.values(row)),
+  })).sort((left, right) => {
+    for (let index = 0; index < preparedKeys.length; index++) {
+      const sortKey = preparedKeys[index];
+      const leftValue = left.values[index], rightValue = right.values[index];
+      const comparison = compareValues(leftValue, rightValue, sortKey.type, collator);
+      if (comparison) {
+        // Empty values remain last in either direction; this matches the table's current behavior.
+        if (isEmpty(leftValue) || isEmpty(rightValue)) return comparison;
+        return comparison * sortKey.direction;
+      }
+    }
+    return left.index - right.index;
   }).map(item => item.row);
 }
 
@@ -92,7 +136,16 @@ export function prepareRows(fields, songs) {
 }
 
 export function recomputeRows(rows, filters, sort, fieldsByKey, memberships = {}) {
-  return sortRows(filterRows(rows, filters, fieldsByKey, memberships), sort, fieldsByKey);
+  return sortRows(filterRows(rows, filters, fieldsByKey, memberships), sort, fieldsByKey, memberships);
+}
+
+export function moveColumn(columns, fromKey, toIndex) {
+  const fromIndex = columns.indexOf(fromKey);
+  if (fromIndex < 0) return columns.slice();
+  const result = columns.filter(key => key !== fromKey);
+  const index = Math.max(0, Math.min(result.length, Number.isFinite(toIndex) ? toIndex : result.length));
+  result.splice(index, 0, fromKey);
+  return result;
 }
 
 export function membershipCount(memberships, playlistId, songId) {

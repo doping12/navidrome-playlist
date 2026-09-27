@@ -28,6 +28,13 @@ const visible = recomputeRows(rows, {
   artist: { items: [{ op: 'contains', value: 'artist 1' }] },
   album: { items: [{ op: 'contains', value: 'アルバム' }] },
   'playlist:p': { items: [{ op: 'in' }] },
-}, { key: 'title', direction: 'asc' }, fieldsByKey, { 'playlist:p': membership['playlist:p'] });
+}, [
+  { key: 'releaseDate', direction: 'asc' }, { key: 'album', direction: 'asc' }, { key: 'trackNumber', direction: 'asc' },
+], fieldsByKey, { 'playlist:p': membership['playlist:p'] });
 const recomputeMs = performance.now() - start;
-console.log(JSON.stringify({ rows: count, fields: fields.length, visible: visible.length, loadMs: Number(loadMs.toFixed(2)), recomputeMs: Number(recomputeMs.toFixed(2)), payloadBytes: Buffer.byteLength(raw), gzipBytes: gzipSync(raw).byteLength }));
+const sortStart = performance.now();
+const sorted = recomputeRows(rows, {}, [
+  { key: 'releaseDate', direction: 'asc' }, { key: 'album', direction: 'asc' }, { key: 'trackNumber', direction: 'asc' },
+], fieldsByKey, { 'playlist:p': membership['playlist:p'] });
+const threeKeySortMs = performance.now() - sortStart;
+console.log(JSON.stringify({ rows: count, fields: fields.length, visible: visible.length, sorted: sorted.length, loadMs: Number(loadMs.toFixed(2)), recomputeMs: Number(recomputeMs.toFixed(2)), threeKeySortMs: Number(threeKeySortMs.toFixed(2)), payloadBytes: Buffer.byteLength(raw), gzipBytes: gzipSync(raw).byteLength }));
